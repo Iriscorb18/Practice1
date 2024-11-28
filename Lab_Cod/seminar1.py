@@ -45,11 +45,11 @@ class colorconversor:
         B = Y +2.029*U
         return R,G,B
     def resize_image_ffmpeg(input_image, output_image, width, height):
-         # Ensure the input/output paths are correct inside the FFmpeg container
-        input_image = f"/app/output_images/{os.path.basename(input_image)}"  # Absolute path
-        output_image = f"/app/output_images/{os.path.basename(output_image)}"  # Absolute path
+    
+        input_image = f"/app/output_images/{os.path.basename(input_image)}"  
+        output_image = f"/app/output_images/{os.path.basename(output_image)}" 
         command = [
-            "docker", "exec", "lab_cod-ffmpeg-1",  # Name of your external FFmpeg container
+            "docker", "exec", "lab_cod-ffmpeg-1",  
             "ffmpeg",
             "-y",
             "-i", input_image,
@@ -60,7 +60,7 @@ class colorconversor:
         
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print(f"Resized image saved to {output_image}")
-        print(result.stdout.decode())  # Print FFmpeg's output
+        print(result.stdout.decode())  
         return result
 
     def serpentine_scan(image):
@@ -76,9 +76,9 @@ class colorconversor:
         return result
 
     def blackwhite_image_ffmpeg(input_image, output_image):
-        # Ensure the input/output paths are correct inside the FFmpeg container
-        input_image = f"/app/output_images/{os.path.basename(input_image)}"  # Absolute path
-        output_image = f"/app/output_images/{os.path.basename(output_image)}"  # Absolute path
+       
+        input_image = f"/app/output_images/{os.path.basename(input_image)}"  
+        output_image = f"/app/output_images/{os.path.basename(output_image)}"  
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
             "ffmpeg",
@@ -109,6 +109,24 @@ class colorconversor:
         #Appending last iteration
         encoded.append((current_byte, count))
         return encoded
+    def chroma_subsampling_ffmpeg(input_image, output_image, subsampling):
+        
+        input_image = f"/app/output_images/{os.path.basename(input_image)}" 
+        output_image = f"/app/output_images/{os.path.basename(output_image)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-i", input_image,        
+            "-c:v", "libx264",              
+            "-vf", f"format={subsampling}",  
+            "-y",                            
+            output_image                      
+        ]
+        
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(f"Resized image saved to {output_image}")
+        print(result.stdout.decode()) 
+        return result
+
 
 class DCT_coding:
     def encoding_DCT(input):
