@@ -1,0 +1,12 @@
+# Dockerfile.ffmpeg for FFmpeg container
+
+# Use the official FFmpeg image from jrottenberg
+FROM jrottenberg/ffmpeg:latest
+
+# Install Docker CLI
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Expose a port if you plan to run a custom service inside this container
+ENTRYPOINT [ "tail", "-f", "/dev/null"]

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+scipy
+opencv-python
+matplotlib
+pillow
+PyWavelets
+python-multipart
+httpx
