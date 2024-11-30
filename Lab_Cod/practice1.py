@@ -33,17 +33,17 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)  # Create the directory if it doesn't exi
 #Mount the directory 
 app.mount("/output_images", StaticFiles(directory=OUTPUT_DIR), name="output_images")
 
-@app.post("/modify-chroma/")
-async def modify_chroma(file: UploadFile = File(...), subsampling: str = "yuv420p"):
-
+@app.post("/modify-chroma-subsampling/")
+async def modify_chroma_subsampling(file: UploadFile = File(...), pix_fmt: str = "yuv420p"):
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    output_file_name = f"chroma_{subsampling}_{file.filename}"
+     # Define the output file path
+    output_file_name = f"chroma_{pix_fmt}_{file.filename}"  # Descriptive name
     output_file_path = os.path.join(OUTPUT_DIR, output_file_name)
 
-    colorconversor.chroma_subsampling_ffmpeg(input_file_path, output_file_path, subsampling)
+    colorconversor.chroma_subsampling_ffmpeg(input_file_path, output_file_path, pix_fmt)
 
     host_url = "http://localhost:8000"
     file_url = f"{host_url}/output_images/{output_file_name}"
@@ -51,7 +51,7 @@ async def modify_chroma(file: UploadFile = File(...), subsampling: str = "yuv420
     os.remove(input_file_path)
 
     return {
-        "message": f"Chroma subsampling modified to {subsampling} successfully",
+        "message": f"Chroma subsampling modified to {pix_fmt} successfully",
         "file_url": file_url,
     }
 
@@ -162,3 +162,69 @@ async def blackwhite_image(file: UploadFile = File(...)):
             "image_url": image_url,
         }
 
+@app.post("/video_info")
+async def video_info(file: UploadFile = File(...)):
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    # Get video info using ffprobe
+    video_info = colorconversor.extract_video_info(input_file_path)
+    
+    # Delete the temporary video file after extraction
+    os.remove(input_file_path)
+    
+    if video_info:
+        return {
+            "message": "Video information retrieved successfully",
+            "video_info": video_info
+        }
+    
+
+# Endpoint to process BBB video and audio
+@app.post("/process-bbb/")
+async def process_bbb(file: UploadFile = File(...)):
+    # Save uploaded file temporarily
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # Define output file paths
+    video_output_path = os.path.join(OUTPUT_DIR, f"bbb_20s_{file.filename}")
+    audio_output_aac_path = os.path.join(OUTPUT_DIR, f"bbb_20s_audio_aac_{file.filename}.aac")
+    audio_output_mp3_path = os.path.join(OUTPUT_DIR, f"bbb_20s_audio_mp3_{file.filename}.mp3")
+    audio_output_ac3_path = os.path.join(OUTPUT_DIR, f"bbb_20s_audio_ac3_{file.filename}.ac3")
+    final_output_path = os.path.join(OUTPUT_DIR, f"bbb_final_{file.filename}.mp4")
+
+    # Cut the video to 20 seconds
+    cut_result = colorconversor.cut_video(input_file_path, video_output_path)
+
+    # Export audio as AAC mono
+    extract_result_aac = colorconversor.extract_audio_aac(cut_result, audio_output_aac_path)
+
+    # Export audio as MP3 stereo with lower bitrate
+    extract_result_mp3 = colorconversor.extract_audio_mp3(extract_result_aac, audio_output_mp3_path)
+
+    # Export audio as AC3 codec
+    extract_result_ac3 = colorconversor.extract_audio_ac3(extract_result_mp3, audio_output_ac3_path)
+
+    package_result_aac = colorconversor.package_video_audio(
+        cut_result, extract_result_aac, video_output_path, audio_output_aac_path, final_output_path
+    )
+    #package_result_mp3 = colorconversor.package_video_audio(
+    #    cut_result, extract_result_mp3, video_output_path, audio_output_aac_path, final_output_path
+    #)
+    #package_result_ac3 = colorconversor.package_video_audio(
+    #    cut_result, extract_result_ac3, video_output_path, audio_output_aac_path, final_output_path
+    #)
+
+
+    # Return paths for the generated files
+    host_url = "http://localhost:8000"  # Change this to your actual host URL
+    return {
+        "message": "Video and audio processed and packaged successfully",
+        "video_output_aac": f"{host_url}/output_files/{os.path.basename(package_result_aac)}",
+        #"video_output_mp3": f"{host_url}/output_files/{os.path.basename(package_result_mp3)}",
+        #"video_output_ac3": f"{host_url}/output_files/{os.path.basename(package_result_ac3)}",
+        "final_video_url": f"{host_url}/output_files/{os.path.basename(final_output_path)}"
+    }

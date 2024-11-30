@@ -10,6 +10,7 @@ from PIL import Image
 import numpy as np
 import pywt
 import os
+import json
 
 
 # #Class code
@@ -109,22 +110,134 @@ class colorconversor:
         #Appending last iteration
         encoded.append((current_byte, count))
         return encoded
-    def chroma_subsampling_ffmpeg(input_image, output_image, subsampling):
+    def chroma_subsampling_ffmpeg(input_image, output_image,  pix_fmt):
         
         input_image = f"/app/output_images/{os.path.basename(input_image)}" 
         output_image = f"/app/output_images/{os.path.basename(output_image)}" 
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg", "-i", input_image,        
-            "-c:v", "libx264",              
-            "-vf", f"format={subsampling}",  
-            "-y",                            
-            output_image                      
+            "ffmpeg", "-i", input_image,  # Input file
+            "-c:v", "libx264",          # Video codec
+            "-vf", f"format={pix_fmt}", # Video filter to set pixel format
+            output_image                 # Output file                   
         ]
         
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print(f"Resized image saved to {output_image}")
         print(result.stdout.decode()) 
+        return result
+    def extract_video_info(video_path):
+        input_image = f"/app/output_images/{os.path.basename(video_path)}"  
+        #output_image = f"/app/output_images/{os.path.basename(output_image)}"  
+        # Run ffprobe command to get video info in JSON format
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            'ffprobe',
+            '-v', 'error',  # Suppress non-error messages
+            '-select_streams', 'v:0',  # Select the first video stream
+            '-show_entries', 'stream=duration,codec_name,width,height,r_frame_rate',  # Specify the data we want
+            '-of', 'json',  # Output format as JSON
+            input_image  # Input video file
+        ]
+        
+        # Run the command and capture the output and errors
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Ensure that stdout contains valid JSON
+        if result.stdout:
+            video_info = json.loads(result.stdout)
+            stream = video_info['streams'][0]
+            video_details = {
+                "duration": stream['duration'],  # Duration of the video
+                "codec": stream['codec_name'],  # Video codec
+                "width": stream['width'],  # Video width
+                "height": stream['height'],  # Video height
+                "frame_rate": eval(stream['r_frame_rate'])  # Frame rate (r_frame_rate is in "numerator/denominator" format)
+            }
+            return video_details
+            # Function to cut video to 20 seconds
+        # Function to run ffmpeg command inside Docker container
+    def run_ffmpeg_in_docker(command):
+        try:
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if result.stderr:
+                print(f"FFmpeg error: {result.stderr}")
+            return result
+        except subprocess.CalledProcessError as e:
+            print(f"Error running ffmpeg: {e}")
+            return None
+
+    # Function to cut video to 20 seconds
+    def cut_video(input_file_path, output_file_path):
+        command = [
+        "docker", "exec", "lab_cod-ffmpeg-1",
+        "ffmpeg", "-i", input_file_path,
+        "-t", "20",  # Duration of 20 seconds
+        "-c:v", "copy",  # Copy the video codec (no re-encoding)
+        "-c:a", "copy",  # Copy the audio codec (no re-encoding)
+        output_file_path
+        ]
+
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return result
+    
+
+    # Function to extract audio as AAC mono
+    def extract_audio_aac(input_file_path, output_file_path):
+ 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",  # Docker container
+            "ffmpeg", "-i", input_file_path,  # Input audio file
+            "-c:a", "libfdk_aac",  # Use the libfdk_aac codec for AAC audio
+            "-b:a", "128k",  # Set the bitrate for the AAC audio
+            output_file_path  # Output file path (M4A container)
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return result
+
+    # Function to extract audio as MP3 stereo with lower bitrate
+    def extract_audio_mp3(input_file_path, output_file_path):
+     
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-i", input_file_path,
+            "-t", "20",  # Duration of 20 seconds
+            "-ac", "2",  # Stereo audio
+            "-c:a", "libmp3lame",  # MP3 codec
+            "-b:a", "64k",  # Lower bitrate (64kbps)
+            output_file_path
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return result
+
+    # Function to extract audio as AC3 codec
+    def extract_audio_ac3(input_file_path, output_file_path):
+       
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-i", input_file_path,
+            "-t", "20",  # Duration of 20 seconds
+            "-c:a", "ac3",  # AC3 codec
+            "-b:a", "192k",  # Bitrate for AC3
+            output_file_path
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return result
+    # Function to package video and audio into a .mp4 file
+    def package_video_audio(input_video_path, input_audio_path_aac, input_audio_path_mp3, input_audio_path_ac3, output_file_path):
+        # Combine the video with one of the audio tracks (AAC, MP3, or AC3)
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg",
+            "-i", input_video_path,
+            "-i", input_audio_path_aac,  # Choose AAC audio or modify to MP3 or AC3
+            "-c:v", "copy",  # Copy video stream
+            "-c:a", "aac",  # Use AAC audio stream
+            "-strict", "experimental",  # Allow experimental codecs (AAC)
+            "-shortest",  # Ensure the output matches the shorter length (20s)
+            output_file_path
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return result
 
 
