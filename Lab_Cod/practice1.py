@@ -116,9 +116,7 @@ async def wavelet(file: UploadFile = File(...), wavelet: str = 'haar', level: in
 @app.post("/resize-image/")
 async def resize_image(file: UploadFile = File(...), width: int = 200, height: int = 200):
       
-    
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
-
 
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
@@ -162,7 +160,7 @@ async def blackwhite_image(file: UploadFile = File(...)):
             "image_url": image_url,
         }
 
-@app.post("/video_info")
+@app.post("/video_info/")
 async def video_info(file: UploadFile = File(...)):
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
@@ -181,50 +179,125 @@ async def video_info(file: UploadFile = File(...)):
         }
     
 
-# Endpoint to process BBB video and audio
-@app.post("/process-bbb/")
-async def process_bbb(file: UploadFile = File(...)):
+@app.post("/process-bbb-full/")
+async def process_bbb_full(file: UploadFile = File(...)):
+    
+    
     # Save uploaded file temporarily
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Define output file paths
-    video_output_path = os.path.join(OUTPUT_DIR, f"bbb_20s_{file.filename}")
-    audio_output_aac_path = os.path.join(OUTPUT_DIR, f"bbb_20s_audio_aac_{file.filename}.aac")
-    audio_output_mp3_path = os.path.join(OUTPUT_DIR, f"bbb_20s_audio_mp3_{file.filename}.mp3")
-    audio_output_ac3_path = os.path.join(OUTPUT_DIR, f"bbb_20s_audio_ac3_{file.filename}.ac3")
-    final_output_path = os.path.join(OUTPUT_DIR, f"bbb_final_{file.filename}.mp4")
+    
+    video_file_name = f"20s_{file.filename}"  #Prefix
+    video_output_path = os.path.join(OUTPUT_DIR, video_file_name)
 
-    # Cut the video to 20 seconds
-    cut_result = colorconversor.cut_video(input_file_path, video_output_path)
+    audio_output_aac_name = f"audio_aac_{file.filename}"
+    audio_output_aac_path = os.path.join(OUTPUT_DIR, audio_output_aac_name)
 
-    # Export audio as AAC mono
-    extract_result_aac = colorconversor.extract_audio_aac(cut_result, audio_output_aac_path)
+    audio_output_mp3_name = f"audio_mp3_{file.filename}"
+    audio_output_mp3_path = os.path.join(OUTPUT_DIR, audio_output_mp3_name)
 
-    # Export audio as MP3 stereo with lower bitrate
-    extract_result_mp3 = colorconversor.extract_audio_mp3(extract_result_aac, audio_output_mp3_path)
+    audio_output_ac3_name = f"audio_ac3_{file.filename}"
+    audio_output_ac3_path = os.path.join(OUTPUT_DIR, audio_output_ac3_name)
 
-    # Export audio as AC3 codec
-    extract_result_ac3 = colorconversor.extract_audio_ac3(extract_result_mp3, audio_output_ac3_path)
+    final_output_name = f"final_{file.filename}"
+    final_output_path = os.path.join(OUTPUT_DIR, final_output_name)
 
-    package_result_aac = colorconversor.package_video_audio(
-        cut_result, extract_result_aac, video_output_path, audio_output_aac_path, final_output_path
-    )
-    #package_result_mp3 = colorconversor.package_video_audio(
-    #    cut_result, extract_result_mp3, video_output_path, audio_output_aac_path, final_output_path
-    #)
-    #package_result_ac3 = colorconversor.package_video_audio(
-    #    cut_result, extract_result_ac3, video_output_path, audio_output_aac_path, final_output_path
-    #)
+        # Step 1: Cut the video to 20 seconds
+    colorconversor.cut_video(input_file_path, video_output_path)
 
+        # Step 2: Extract audio as AAC mono
+    colorconversor.extract_audio_aac(input_file_path, audio_output_aac_path)
 
-    # Return paths for the generated files
-    host_url = "http://localhost:8000"  # Change this to your actual host URL
+        # Step 3: Extract audio as MP3 stereo with lower bitrate
+    colorconversor.extract_audio_mp3(input_file_path, audio_output_mp3_path)
+
+        # Step 4: Extract audio as AC3 codec
+    colorconversor.extract_audio_ac3(input_file_path, audio_output_ac3_path)
+
+        # Step 5: Package video and audio into final MP4 container
+    colorconversor.package_video_audio(video_output_path, audio_output_aac_path, audio_output_mp3_path, audio_output_ac3_path, final_output_path)
+
+        # Return the paths of the generated files
+    host_url = "http://localhost:8000"  # Adjust this if your server address changes
+    video_url = f"{host_url}/output_images/{video_file_name}"
+    aac_url = f"{host_url}/output_images/{audio_output_aac_name}"
+    mp3_url = f"{host_url}/output_images/{audio_output_mp3_name}"
+    ac3_url = f"{host_url}/output_images/{audio_output_ac3_name}"
+    final_url = f"{host_url}/output_images/{final_output_name}"
     return {
-        "message": "Video and audio processed and packaged successfully",
-        "video_output_aac": f"{host_url}/output_files/{os.path.basename(package_result_aac)}",
-        #"video_output_mp3": f"{host_url}/output_files/{os.path.basename(package_result_mp3)}",
-        #"video_output_ac3": f"{host_url}/output_files/{os.path.basename(package_result_ac3)}",
-        "final_video_url": f"{host_url}/output_files/{os.path.basename(final_output_path)}"
+            "message": "Video and audio processed successfully",
+            "video_output_url": video_url,
+            "audio_aac_output_url": aac_url,
+            "audio_mp3_output_url": mp3_url,
+            "audio_ac3_output_url": ac3_url,
+            "final_video_url": final_url
     }
+
+
+@app.post("/get-tracks/")
+async def get_tracks(file: UploadFile = File(...)):
+
+    # Save the uploaded file temporarily
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    track_count = colorconversor.count_tracks_in_mp4(input_file_path)
+
+    return {
+        "message": "MP4 container analyzed successfully.",
+        "file_name": file.filename,
+        "track_count": track_count
+    }
+
+@app.post("/visualize-motion/")
+async def visualize_motion(file: UploadFile = File(...)):
+    
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    output_file_name = f"motion_{file.filename}"  #Prefix
+    output_file_path = os.path.join(OUTPUT_DIR, output_file_name)
+
+    colorconversor.visualize_vectors(input_file_path, output_file_path)
+
+    host_url = "http://localhost:8000"  # Update with your actual host URL
+    image_url = f"{host_url}/output_images/{output_file_name}"
+
+    #Delete the temporary input file
+    os.remove(input_file_path)
+    return {
+        "message": "Motion vectors and macroblocks visualized successfully.",
+        "output_video_url": image_url
+    }
+
+@app.post("/yuv-histogram/")
+async def yuv_histogram(file: UploadFile = File(...)):
+
+    # Save the uploaded file temporarily
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # Define output file path
+    output_file_path = os.path.join(OUTPUT_DIR, f"yuv_histogram_{file.filename}")
+
+    # Generate video with YUV histogram
+    colorconversor.generate_yuv_histogram(input_file_path, output_file_path)
+
+    host_url = "http://localhost:8000"  # Update with your actual host URL
+    image_url = f"{host_url}/output_images/{output_file_path}"
+
+    #Delete the temporary input file
+    os.remove(input_file_path)
+    return {
+        "message": "YUV histogram generated successfully.",
+        "output_video_url": image_url
+    }
+
+
+
+

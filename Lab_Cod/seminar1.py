@@ -116,7 +116,7 @@ class colorconversor:
         output_image = f"/app/output_images/{os.path.basename(output_image)}" 
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg", "-i", input_image,  # Input file
+            "ffmpeg", "-y","-i", input_image,  # Input file
             "-c:v", "libx264",          # Video codec
             "-vf", f"format={pix_fmt}", # Video filter to set pixel format
             output_image                 # Output file                   
@@ -128,7 +128,7 @@ class colorconversor:
         return result
     def extract_video_info(video_path):
         input_image = f"/app/output_images/{os.path.basename(video_path)}"  
-        #output_image = f"/app/output_images/{os.path.basename(output_image)}"  
+ 
         # Run ffprobe command to get video info in JSON format
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
@@ -155,90 +155,141 @@ class colorconversor:
                 "frame_rate": eval(stream['r_frame_rate'])  # Frame rate (r_frame_rate is in "numerator/denominator" format)
             }
             return video_details
-            # Function to cut video to 20 seconds
-        # Function to run ffmpeg command inside Docker container
-    def run_ffmpeg_in_docker(command):
-        try:
-            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            if result.stderr:
-                print(f"FFmpeg error: {result.stderr}")
-            return result
-        except subprocess.CalledProcessError as e:
-            print(f"Error running ffmpeg: {e}")
-            return None
-
-    # Function to cut video to 20 seconds
+            
     def cut_video(input_file_path, output_file_path):
+        input_file_in_container = f"/app/output_images/{os.path.basename(input_file_path)}"
+        output_file_in_container = f"/app/output_images/{os.path.basename(output_file_path)}"
+
         command = [
-        "docker", "exec", "lab_cod-ffmpeg-1",
-        "ffmpeg", "-i", input_file_path,
-        "-t", "20",  # Duration of 20 seconds
-        "-c:v", "copy",  # Copy the video codec (no re-encoding)
-        "-c:a", "copy",  # Copy the audio codec (no re-encoding)
-        output_file_path
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-y",
+            "-i", input_file_in_container,  # Input file path in container
+            "-t", "20",  # Duration of 20 seconds
+            "-c:v", "copy",                 # Avoid re-encoding
+            output_file_in_container        # Output file path in container
         ]
 
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return result
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     
+        
 
     # Function to extract audio as AAC mono
     def extract_audio_aac(input_file_path, output_file_path):
- 
+        input_file_in_container = f"/app/output_images/{os.path.basename(input_file_path)}"
+        output_file_in_container = f"/app/output_images/{os.path.basename(output_file_path)}"
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",  # Docker container
-            "ffmpeg", "-i", input_file_path,  # Input audio file
-            "-c:a", "libfdk_aac",  # Use the libfdk_aac codec for AAC audio
-            "-b:a", "128k",  # Set the bitrate for the AAC audio
-            output_file_path  # Output file path (M4A container)
+            "ffmpeg","-y" ,"-i", input_file_in_container,  # Input audio file
+            "-t", "20",  # Duration of 20 seconds
+            "-ac", "1", #Mono audio
+            "-c:a", "aac", #AAC Codec
+            "-b:a", "128k", output_file_in_container #Bitrate for AAC
         ]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return result
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Function to extract audio as MP3 stereo with lower bitrate
     def extract_audio_mp3(input_file_path, output_file_path):
-     
+        input_file_in_container = f"/app/output_images/{os.path.basename(input_file_path)}"
+        output_file_in_container = f"/app/output_images/{os.path.basename(output_file_path)}"
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg", "-i", input_file_path,
+            "ffmpeg","-y" ,"-i", input_file_in_container,
             "-t", "20",  # Duration of 20 seconds
             "-ac", "2",  # Stereo audio
             "-c:a", "libmp3lame",  # MP3 codec
             "-b:a", "64k",  # Lower bitrate (64kbps)
-            output_file_path
+            output_file_in_container
         ]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return result
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
 
     # Function to extract audio as AC3 codec
     def extract_audio_ac3(input_file_path, output_file_path):
-       
+        input_file_in_container = f"/app/output_images/{os.path.basename(input_file_path)}"
+        output_file_in_container = f"/app/output_images/{os.path.basename(output_file_path)}"
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg", "-i", input_file_path,
+            "ffmpeg", "-y" ,"-i", input_file_in_container,
             "-t", "20",  # Duration of 20 seconds
+            "-ac", "2",  # Stereo audio
             "-c:a", "ac3",  # AC3 codec
             "-b:a", "192k",  # Bitrate for AC3
-            output_file_path
+            output_file_in_container
         ]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return result
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
     # Function to package video and audio into a .mp4 file
-    def package_video_audio(input_video_path, input_audio_path_aac, input_audio_path_mp3, input_audio_path_ac3, output_file_path):
-        # Combine the video with one of the audio tracks (AAC, MP3, or AC3)
+    def package_video_audio(video_path, audio_aac_path, audio_mp3_path, audio_ac3_path, output_path):
+        video_path = f"/app/output_images/{os.path.basename(video_path)}"
+        audio_aac_path = f"/app/output_images/{os.path.basename(audio_aac_path)}"
+        audio_mp3_path = f"/app/output_images/{os.path.basename(audio_mp3_path)}"
+        audio_ac3_path = f"/app/output_images/{os.path.basename(audio_ac3_path)}"
+        output_path = f"/app/output_images/{os.path.basename(output_path)}"
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg",
-            "-i", input_video_path,
-            "-i", input_audio_path_aac,  # Choose AAC audio or modify to MP3 or AC3
-            "-c:v", "copy",  # Copy video stream
-            "-c:a", "aac",  # Use AAC audio stream
-            "-strict", "experimental",  # Allow experimental codecs (AAC)
-            "-shortest",  # Ensure the output matches the shorter length (20s)
+            "ffmpeg", 
+            "-i", video_path, 
+            "-i", audio_aac_path, 
+            "-i", audio_mp3_path, 
+            "-i", audio_ac3_path,
+            "-c:v", "copy", 
+            "-map", "0:v", 
+            "-map", "1:a", 
+            "-map", "2:a", 
+            "-map", "3:a", 
+            "-c:a:0", "aac", 
+            "-c:a:1", "mp3", 
+            "-c:a:2", "ac3", 
+            "-y", output_path
+        ]
+       
+    def count_tracks_in_mp4(input_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffprobe", "-v", "error",
+            "-show_entries", "stream=index",
+            "-of", "csv=p=0",
+            input_file_path
+        ]
+        
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Each line in the output corresponds to a track
+        track_count = len(result.stdout.strip().split("\n"))
+        return track_count
+    def visualize_vectors(input_file_path, output_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-y","-flags2", "+export_mvs",  # Enable motion vector export
+            "-i", input_file_path,
+            "-vf", "codecview=mv=pf+bf+bb",  # Visualize motion vectors and macroblocks
+            "-c:v", "libx264",  # Output codec
+            "-preset", "fast",  # Speed optimization
+            "-crf", "23",  # Quality control
             output_file_path
         ]
+
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return result
+    def generate_yuv_histogram(input_file_path, output_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-y",
+            "-i", input_file_path,
+            "-vf", "split=2[a][b];[b]histogram,format=yuv420p[hh];[a][hh]overlay",  # Split video and add histogram
+            "-c:v", "libx264",  # Output codec
+            "-preset", "fast",  # Speed optimization
+            "-crf", "23",  # Quality control
+            output_file_path
+        ]
+
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+
+
 
 
 class DCT_coding:
