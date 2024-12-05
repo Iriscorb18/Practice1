@@ -165,11 +165,8 @@ async def video_info(file: UploadFile = File(...)):
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
-    
-    # Get video info using ffprobe
     video_info = colorconversor.extract_video_info(input_file_path)
     
-    # Delete the temporary video file after extraction
     os.remove(input_file_path)
     
     if video_info:
@@ -182,8 +179,6 @@ async def video_info(file: UploadFile = File(...)):
 @app.post("/process-bbb-full/")
 async def process_bbb_full(file: UploadFile = File(...)):
     
-    
-    # Save uploaded file temporarily
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
@@ -204,23 +199,14 @@ async def process_bbb_full(file: UploadFile = File(...)):
     final_output_name = f"final_{file.filename}"
     final_output_path = os.path.join(OUTPUT_DIR, final_output_name)
 
-        # Step 1: Cut the video to 20 seconds
     colorconversor.cut_video(input_file_path, video_output_path)
-
-        # Step 2: Extract audio as AAC mono
     colorconversor.extract_audio_aac(input_file_path, audio_output_aac_path)
-
-        # Step 3: Extract audio as MP3 stereo with lower bitrate
     colorconversor.extract_audio_mp3(input_file_path, audio_output_mp3_path)
-
-        # Step 4: Extract audio as AC3 codec
     colorconversor.extract_audio_ac3(input_file_path, audio_output_ac3_path)
-
-        # Step 5: Package video and audio into final MP4 container
     colorconversor.package_video_audio(video_output_path, audio_output_aac_path, audio_output_mp3_path, audio_output_ac3_path, final_output_path)
 
-        # Return the paths of the generated files
-    host_url = "http://localhost:8000"  # Adjust this if your server address changes
+
+    host_url = "http://localhost:8000" 
     video_url = f"{host_url}/output_images/{video_file_name}"
     aac_url = f"{host_url}/output_images/{audio_output_aac_name}"
     mp3_url = f"{host_url}/output_images/{audio_output_mp3_name}"
@@ -239,7 +225,6 @@ async def process_bbb_full(file: UploadFile = File(...)):
 @app.post("/get-tracks/")
 async def get_tracks(file: UploadFile = File(...)):
 
-    # Save the uploaded file temporarily
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
@@ -267,7 +252,6 @@ async def visualize_motion(file: UploadFile = File(...)):
     host_url = "http://localhost:8000"  # Update with your actual host URL
     image_url = f"{host_url}/output_images/{output_file_name}"
 
-    #Delete the temporary input file
     os.remove(input_file_path)
     return {
         "message": "Motion vectors and macroblocks visualized successfully.",
@@ -277,26 +261,132 @@ async def visualize_motion(file: UploadFile = File(...)):
 @app.post("/yuv-histogram/")
 async def yuv_histogram(file: UploadFile = File(...)):
 
-    # Save the uploaded file temporarily
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Define output file path
     output_file_path = os.path.join(OUTPUT_DIR, f"yuv_histogram_{file.filename}")
 
-    # Generate video with YUV histogram
+
     colorconversor.generate_yuv_histogram(input_file_path, output_file_path)
 
-    host_url = "http://localhost:8000"  # Update with your actual host URL
+    host_url = "http://localhost:8000"  
     image_url = f"{host_url}/output_images/{output_file_path}"
 
-    #Delete the temporary input file
     os.remove(input_file_path)
     return {
         "message": "YUV histogram generated successfully.",
         "output_video_url": image_url
     }
+
+@app.post("/convert-video/")
+async def convert_video(file: UploadFile = File(...)):
+
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+ 
+    base_name = os.path.splitext(file.filename)[0]
+    vp8_name = f"{base_name}_vp8.webm"
+    output_vp8 = os.path.join(OUTPUT_DIR, vp8_name)
+    vp9_name = f"{base_name}_vp9.webm"
+    output_vp9 = os.path.join(OUTPUT_DIR, vp9_name)
+    h265_name = f"{base_name}_h265.mp4"
+    output_h265 = os.path.join(OUTPUT_DIR, h265_name)
+    av1_name = f"{base_name}_av1.mkv"
+    output_av1 = os.path.join(OUTPUT_DIR, av1_name)
+
+    colorconversor.vp8_change(input_file_path, output_vp8)
+    colorconversor.vp9_change(input_file_path, output_vp9)
+    colorconversor.h265_change(input_file_path, output_h265)
+    colorconversor.av1_change(input_file_path, output_av1)
+
+    
+    os.remove(input_file_path)
+
+   
+    host_url = "http://localhost:8000"
+    vp8_url = f"{host_url}/output_images/{vp8_name}"
+    vp9_url = f"{host_url}/output_images/{vp9_name}"
+    h265_url = f"{host_url}/output_images/{h265_name}"
+    av1_url = f"{host_url}/output_images/{av1_name}"
+
+    return {
+        "message": "Video conversion completed",
+     
+        "VP8": vp8_url,
+        "VP9": vp9_url,
+        "H265": h265_url,
+        "AV1": av1_url  
+    }
+@app.post("/encoding-ladder/")
+async def generate_encoding_ladder(file: UploadFile = File(...)):
+    # Save the uploaded file temporarily
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+      # Process encoding ladder one by one
+    output_urls = {}
+    host_url = "http://localhost:8000"
+    base_name = os.path.splitext(file.filename)[0]
+
+    vp8_name = f"{base_name}_vp8.webm"
+    output_vp8 = os.path.join(OUTPUT_DIR, vp8_name)
+    # Entry 1: 240p
+    resolution_240p = "240"
+    bitrate_240p = "500k"
+    output_file_name_240p = f"{base_name}_240p.mp4"
+    output_file_path_240p = os.path.join(OUTPUT_DIR, output_file_name_240p)
+
+    colorconversor.encode_video(input_file_path, output_file_path_240p, resolution_240p, bitrate_240p)
+    resolution_240p_url = f"{host_url}/output_images/{output_file_name_240p}"
+
+    # Entry 2: 360p
+    resolution_360p = "360"
+    bitrate_360p = "800k"
+    output_file_name_360p =  f"{base_name}_360p.mp4"
+    output_file_path_360p = os.path.join(OUTPUT_DIR, output_file_name_360p)
+
+    colorconversor.encode_video(input_file_path, output_file_path_360p, resolution_360p, bitrate_360p)
+    resolution_360p_url = f"{host_url}/output_images/{output_file_name_360p}"
+
+    # Entry 3: 480p
+    resolution_480p = "480"
+    bitrate_480p = "1500k"
+    output_file_name_480p = f"{base_name}_480p.mp4"
+    output_file_path_480p = os.path.join(OUTPUT_DIR, output_file_name_480p)
+
+    colorconversor.encode_video(input_file_path, output_file_path_480p, resolution_480p, bitrate_480p)
+    resolution_480p_url  = f"{host_url}/output_images/{output_file_name_480p}"
+
+    # Entry 4: 720p
+    resolution_720p = "720"
+    bitrate_720p = "3000k"
+    output_file_name_720p =  f"{base_name}_720p.mp4"
+    output_file_path_720p = os.path.join(OUTPUT_DIR, output_file_name_720p)
+
+    colorconversor.encode_video(input_file_path, output_file_path_720p, resolution_720p, bitrate_720p)
+    resolution_720p_url = f"{host_url}/output_images/{output_file_name_720p}"
+
+    # Entry 5: 1080p
+    resolution_1080p = "1080"
+    bitrate_1080p = "5000k"
+    output_file_name_1080p =  f"{base_name}_1080p.mp4"
+    output_file_path_1080p = os.path.join(OUTPUT_DIR, output_file_name_1080p)
+
+    colorconversor.encode_video(input_file_path, output_file_path_1080p, resolution_1080p, bitrate_1080p)
+    resolution_1080p_url = f"{host_url}/output_images/{output_file_name_1080p}"
+    os.remove(input_file_path)
+    output_urls = [resolution_240p_url,resolution_360p_url, resolution_480p_url, resolution_720p_url, resolution_1080p_url]
+    return {
+        "message": "Encoding ladder processed successfully",
+        "output_urls": output_urls
+    }
+
+
+
 
 
 

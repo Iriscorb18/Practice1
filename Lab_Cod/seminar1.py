@@ -116,10 +116,10 @@ class colorconversor:
         output_image = f"/app/output_images/{os.path.basename(output_image)}" 
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg", "-y","-i", input_image,  # Input file
-            "-c:v", "libx264",          # Video codec
-            "-vf", f"format={pix_fmt}", # Video filter to set pixel format
-            output_image                 # Output file                   
+            "ffmpeg", "-y","-i", input_image,  
+            "-c:v", "libx264",          #Video codec we use
+            "-vf", f"format={pix_fmt}", #Video filter to set our format
+            output_image                               
         ]
         
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -133,26 +133,25 @@ class colorconversor:
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
             'ffprobe',
-            '-v', 'error',  # Suppress non-error messages
-            '-select_streams', 'v:0',  # Select the first video stream
-            '-show_entries', 'stream=duration,codec_name,width,height,r_frame_rate',  # Specify the data we want
-            '-of', 'json',  # Output format as JSON
-            input_image  # Input video file
+            '-v', 'error',  #Suppress non-error messages
+            '-select_streams', 'v:0',  #Select the first video stream
+            '-show_entries', 'stream=duration,codec_name,width,height,r_frame_rate',  #Data we want
+            '-of', 'json',  
+            input_image 
         ]
         
-        # Run the command and capture the output and errors
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        # Ensure that stdout contains valid JSON
+
         if result.stdout:
             video_info = json.loads(result.stdout)
             stream = video_info['streams'][0]
             video_details = {
-                "duration": stream['duration'],  # Duration of the video
-                "codec": stream['codec_name'],  # Video codec
-                "width": stream['width'],  # Video width
-                "height": stream['height'],  # Video height
-                "frame_rate": eval(stream['r_frame_rate'])  # Frame rate (r_frame_rate is in "numerator/denominator" format)
+                "duration": stream['duration'],  #Duration of the video
+                "codec": stream['codec_name'],  #Video codec used
+                "width": stream['width'],  #Video width
+                "height": stream['height'],  #Video height
+                "frame_rate": eval(stream['r_frame_rate'])  #Frame rate
             }
             return video_details
             
@@ -163,41 +162,39 @@ class colorconversor:
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
             "ffmpeg", "-y",
-            "-i", input_file_in_container,  # Input file path in container
-            "-t", "20",  # Duration of 20 seconds
-            "-c:v", "copy",                 # Avoid re-encoding
-            output_file_in_container        # Output file path in container
+            "-i", input_file_in_container,  
+            "-t", "20",  #Duration of 20 seconds
+            "-c:v", "copy",                
+            output_file_in_container      
         ]
 
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     
         
-
-    # Function to extract audio as AAC mono
     def extract_audio_aac(input_file_path, output_file_path):
         input_file_in_container = f"/app/output_images/{os.path.basename(input_file_path)}"
         output_file_in_container = f"/app/output_images/{os.path.basename(output_file_path)}"
         command = [
-            "docker", "exec", "lab_cod-ffmpeg-1",  # Docker container
-            "ffmpeg","-y" ,"-i", input_file_in_container,  # Input audio file
-            "-t", "20",  # Duration of 20 seconds
+            "docker", "exec", "lab_cod-ffmpeg-1",  
+            "ffmpeg","-y" ,"-i", input_file_in_container,  
+            "-t", "20",  #Duration of 20 seconds
             "-ac", "1", #Mono audio
             "-c:a", "aac", #AAC Codec
             "-b:a", "128k", output_file_in_container #Bitrate for AAC
         ]
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    # Function to extract audio as MP3 stereo with lower bitrate
+
     def extract_audio_mp3(input_file_path, output_file_path):
         input_file_in_container = f"/app/output_images/{os.path.basename(input_file_path)}"
         output_file_in_container = f"/app/output_images/{os.path.basename(output_file_path)}"
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
             "ffmpeg","-y" ,"-i", input_file_in_container,
-            "-t", "20",  # Duration of 20 seconds
-            "-ac", "2",  # Stereo audio
-            "-c:a", "libmp3lame",  # MP3 codec
-            "-b:a", "64k",  # Lower bitrate (64kbps)
+            "-t", "20",  #Duration of 20 seconds
+            "-ac", "2",  #Stereo audio
+            "-c:a", "libmp3lame",  #MP3 codec
+            "-b:a", "64k",  #Lower bitrate (64kbps)
             output_file_in_container
         ]
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -210,15 +207,15 @@ class colorconversor:
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
             "ffmpeg", "-y" ,"-i", input_file_in_container,
-            "-t", "20",  # Duration of 20 seconds
-            "-ac", "2",  # Stereo audio
-            "-c:a", "ac3",  # AC3 codec
-            "-b:a", "192k",  # Bitrate for AC3
+            "-t", "20",  #Duration of 20 seconds
+            "-ac", "2",  #Stereo audio
+            "-c:a", "ac3",  #AC3 codec
+            "-b:a", "192k",  #Bitrate for AC3
             output_file_in_container
         ]
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    # Function to package video and audio into a .mp4 file
+    
     def package_video_audio(video_path, audio_aac_path, audio_mp3_path, audio_ac3_path, output_path):
         video_path = f"/app/output_images/{os.path.basename(video_path)}"
         audio_aac_path = f"/app/output_images/{os.path.basename(audio_aac_path)}"
@@ -233,13 +230,13 @@ class colorconversor:
             "-i", audio_mp3_path, 
             "-i", audio_ac3_path,
             "-c:v", "copy", 
-            "-map", "0:v", 
+            "-map", "0:v", #Mapping each one into the tracks
             "-map", "1:a", 
             "-map", "2:a", 
             "-map", "3:a", 
-            "-c:a:0", "aac", 
-            "-c:a:1", "mp3", 
-            "-c:a:2", "ac3", 
+            "-c:a:0", "aac", #Track 1 corresponds to AAC
+            "-c:a:1", "mp3", #Track 2 corresponds to MP3
+            "-c:a:2", "ac3", #Track 3 corresponds to AC3
             "-y", output_path
         ]
        
@@ -254,7 +251,7 @@ class colorconversor:
         ]
         
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        # Each line in the output corresponds to a track
+        #Each line in the output corresponds to a track
         track_count = len(result.stdout.strip().split("\n"))
         return track_count
     def visualize_vectors(input_file_path, output_file_path):
@@ -262,12 +259,12 @@ class colorconversor:
         output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
         command = [
             "docker", "exec", "lab_cod-ffmpeg-1",
-            "ffmpeg", "-y","-flags2", "+export_mvs",  # Enable motion vector export
+            "ffmpeg", "-y","-flags2", "+export_mvs",  #Enable motion vector export
             "-i", input_file_path,
-            "-vf", "codecview=mv=pf+bf+bb",  # Visualize motion vectors and macroblocks
-            "-c:v", "libx264",  # Output codec
-            "-preset", "fast",  # Speed optimization
-            "-crf", "23",  # Quality control
+            "-vf", "codecview=mv=pf+bf+bb",  #Visualize motion vectors + macroblocks
+            "-c:v", "libx264",  #Output codec
+            "-preset", "fast",  #Speed optimization
+            "-crf", "23",  #Quality control
             output_file_path
         ]
 
@@ -279,14 +276,80 @@ class colorconversor:
             "docker", "exec", "lab_cod-ffmpeg-1",
             "ffmpeg", "-y",
             "-i", input_file_path,
-            "-vf", "split=2[a][b];[b]histogram,format=yuv420p[hh];[a][hh]overlay",  # Split video and add histogram
-            "-c:v", "libx264",  # Output codec
-            "-preset", "fast",  # Speed optimization
-            "-crf", "23",  # Quality control
+            "-vf", "split=2[a][b];[b]histogram,format=yuv420p[hh];[a][hh]overlay",  #Split video + Add histogram
+            "-c:v", "libx264",  #Output codec
+            "-preset", "fast",  #Optimization
+            "-crf", "23",  #Quality control
             output_file_path
         ]
 
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    def vp8_change(input_file_path, output_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-y",
+            "-i", input_file_path,
+            "-c:v", "libvpx", "-b:v", "1M", "-c:a", "libvorbis", 
+            output_file_path
+        ]
+
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    def vp9_change(input_file_path, output_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-y",
+            "-i", input_file_path,
+            "-c:v", "libvpx-vp9", "-b:v", "2M", "-c:a", "libopus", 
+            output_file_path
+        ]
+
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    def h265_change(input_file_path, output_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-y",
+            "-i", input_file_path, 
+            "-c:v", "libx265", "-preset", "medium", 
+            "-c:a", "aac", "-b:a", "128k",
+            output_file_path
+        ]
+
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    def av1_change(input_file_path, output_file_path):
+        input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
+        output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-i", input_file_path,
+            "-c:v", "libaom-av1", "-b:v", "2M", output_file_path
+        ]
+
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    # Helper function to encode video
+    def encode_video(input_path, output_path, resolution, bitrate):
+        input_path = f"/app/output_images/{os.path.basename(input_path)}"  
+        output_path = f"/app/output_images/{os.path.basename(output_path)}" 
+        command = [
+            "docker", "exec", "lab_cod-ffmpeg-1",
+            "ffmpeg", "-i", input_path,
+            "-vf", f"scale=-1:{resolution}",  #Scale video while maintaining aspect ratio
+            "-b:v", bitrate,                 #Set video bitrate
+            "-c:v", "libx264",                 #Use H.264 codec
+            "-preset", "fast",               #Fast encoding preset
+            "-c:a", "aac",             #Audio codec
+            "-b:a", "128k",            #Set audio bitrate
+            "-y",                           
+            output_path
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+
 
 
 
