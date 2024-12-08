@@ -267,8 +267,9 @@ class colorconversor:
             "-crf", "23",  #Quality control
             output_file_path
         ]
-
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(result.stdout.decode())  # Print FFmpeg's output
+        return result
     def generate_yuv_histogram(input_file_path, output_file_path):
         input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
         output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
@@ -282,8 +283,9 @@ class colorconversor:
             "-crf", "23",  #Quality control
             output_file_path
         ]
-
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(result.stdout.decode())  # Print FFmpeg's output
+        return result
     def vp8_change(input_file_path, output_file_path):
         input_file_path = f"/app/output_images/{os.path.basename(input_file_path)}"  
         output_file_path = f"/app/output_images/{os.path.basename(output_file_path)}" 
@@ -349,12 +351,6 @@ class colorconversor:
         ]
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-
-
-
-
-
-
 class DCT_coding:
     def encoding_DCT(input):
         return (dct(input, norm = 'ortho'))
@@ -364,18 +360,18 @@ class DCT_coding:
 
 class wavelet_coding:
     def generate_wavelet(img, string, level = 1):
-        coeffs = pywt.wavedec2(img, string, level)
+        coeffs = pywt.dwt2(img, string, level)
         return coeffs
     
     def plot_coefficients(coeffs):
         
         cA, (cH, cV, cD) = coeffs
+
+        # Check the dimensions of each component
+        print(f"cA shape: {cA.shape}, cH shape: {cH.shape}, cV shape: {cV.shape}, cD shape: {cD.shape}")
     
-        cA = cA[:, :, 0]
-        cH = cH[:, :, 0]
-        cV = cV[:, :, 0]
-        cD = cD[:, :, 0]
-        
+       
+        # Plot the coefficients
         plt.figure(figsize=(10, 10))
         plt.subplot(2, 2, 1)
         plt.title('Approximation')

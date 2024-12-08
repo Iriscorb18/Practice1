@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.staticfiles import StaticFiles  # Correct import for StaticFiles
 from seminar1 import colorconversor, DCT_coding, wavelet_coding
 import numpy as np
@@ -95,26 +95,40 @@ async def dct_decode(file: UploadFile = File(...)):
 # Wavelet Generation Endpoint
 @app.post("/wavelet/")
 async def wavelet(file: UploadFile = File(...), wavelet: str = 'haar', level: int = 1):
-  # Read and process the uploaded image
-    image = Image.open(io.BytesIO(await file.read()))  # Convert to grayscale
+  # Save the uploaded file to the server
+    input_file_path = os.path.join(OUTPUT_DIR, file.filename)
+    with open(input_file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
 
-    coeffs = wavelet_coding.generate_wavelet(image, wavelet, level)
-
-      
-    output_file = os.path.join(OUTPUT_DIR, "wavelet_image.jpeg")
-    wavelet_coding.plot_coefficients(coeffs)  # Plot the coefficients
- 
-    plt.savefig(output_file)
+    # Load the image (grayscale conversion)
+    image = Image.open(input_file_path).convert("L")
+    image_array = np.array(image)
+    
 
 
+    # Generate wavelet coefficients
+    coeffs = wavelet_coding.generate_wavelet(image_array, wavelet, level)
+
+    # Plot and save the transformed output image
+    output_file_name = f"wavelet_{wavelet}_level{level}_{file.filename}"
+    output_file_path = os.path.join(OUTPUT_DIR, output_file_name)
+    
+    # Plot the wavelet coefficients and save the image
+    wavelet_coding.plot_coefficients(coeffs)  
+    plt.savefig(output_file_path)
+
+    # Construct URL for the output file
     host_url = "http://localhost:8000"
-    image_url = f"{host_url}/output_images/wavelet_image.jpeg"
-        
-    return {"message": "Wavelet transformed image generated successfully", "image_url": image_url}
+    image_url = f"{host_url}/output_images/{output_file_name}"
+
+    return {
+        "message": "Wavelet transformed image generated successfully",
+        "image_url": image_url
+        }
 
 # Endpoint for resizing the image
 @app.post("/resize-image/")
-async def resize_image(file: UploadFile = File(...), width: int = 200, height: int = 200):
+async def resize_image(width: int, height: int, file: UploadFile = File(...)):
       
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
 
@@ -132,11 +146,13 @@ async def resize_image(file: UploadFile = File(...), width: int = 200, height: i
 
     #Delete the temporary input file
     os.remove(input_file_path)
+    print(f"Width received: {width}, Height received: {height}")
 
     return {
         "message": "Image resized successfully",
         "image_url": image_url,
     }
+
 
 @app.post("/blackwhite-image/")
 async def blackwhite_image(file: UploadFile = File(...)):
@@ -240,40 +256,61 @@ async def get_tracks(file: UploadFile = File(...)):
 @app.post("/visualize-motion/")
 async def visualize_motion(file: UploadFile = File(...)):
     
+    # Save the uploaded file to the output directory
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    output_file_name = f"motion_{file.filename}"  #Prefix
+    # Prepare output file path
+    output_file_name = f"motion_{file.filename}"
     output_file_path = os.path.join(OUTPUT_DIR, output_file_name)
 
+    print(f"Input file path: {input_file_path}")
+    print(f"Output file path: {output_file_path}")
+        
     colorconversor.visualize_vectors(input_file_path, output_file_path)
-
-    host_url = "http://localhost:8000"  # Update with your actual host URL
+  
+    # Construct the output video URL
+    host_url = "http://localhost:8000"  # Make sure this is correct
     image_url = f"{host_url}/output_images/{output_file_name}"
 
+    print(f"Generated video URL: {image_url}")
+
+    # Optionally remove the uploaded input file after processing
     os.remove(input_file_path)
+
+    # Return the output video URL
     return {
         "message": "Motion vectors and macroblocks visualized successfully.",
         "output_video_url": image_url
     }
-
 @app.post("/yuv-histogram/")
 async def yuv_histogram(file: UploadFile = File(...)):
 
+    # Save the uploaded file to the output directory
     input_file_path = os.path.join(OUTPUT_DIR, file.filename)
     with open(input_file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    output_file_path = os.path.join(OUTPUT_DIR, f"yuv_histogram_{file.filename}")
+    # Prepare output file path
+    output_file_name = f"yuvHistogram_{file.filename}"
+    output_file_path = os.path.join(OUTPUT_DIR, output_file_name)
+
+    print(f"Input file path: {input_file_path}")
+    print(f"Output file path: {output_file_path}")
 
 
     colorconversor.generate_yuv_histogram(input_file_path, output_file_path)
+    # Construct the output video URL
+    host_url = "http://localhost:8000"  # Make sure this is correct
+    image_url = f"{host_url}/output_images/{output_file_name}"
 
-    host_url = "http://localhost:8000"  
-    image_url = f"{host_url}/output_images/{output_file_path}"
+    print(f"Generated video URL: {image_url}")
 
+    # Optionally remove the uploaded input file after processing
     os.remove(input_file_path)
+
+     
     return {
         "message": "YUV histogram generated successfully.",
         "output_video_url": image_url
