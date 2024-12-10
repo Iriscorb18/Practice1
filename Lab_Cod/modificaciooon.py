@@ -38,6 +38,104 @@ class MonsterAPIApp(ctk.CTk):
         self.create_image_display_tab()
         self.create_console_tab()
 
+    # Change of colors and some positions of the Controls interface
+    # def create_controls_tab(self):
+    #     """Set up the controls tab for endpoint selection and file upload."""
+    #     self.controls_tab = self.tab_view.add("Controls")
+
+    #     # Section for endpoint selection
+    #     self.options_frame = ctk.CTkFrame(self.controls_tab, corner_radius=15)
+    #     self.options_frame.pack(pady=20, padx=10, fill="x")
+
+    #     # Endpoint selection dropdown
+    #     self.endpoint_var = ctk.StringVar(value="dct_encode")
+    #     options_label = ctk.CTkLabel(
+    #         self.options_frame,
+    #         text="Select Endpoint:",
+    #         font=("Roboto", 16, "bold"),
+    #     )
+    #     options_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+    #     endpoints = [
+    #         ("DCT Encode", "dct_encode"),
+    #         ("DCT Decode", "dct_decode"),
+    #         ("Black & White", "blackwhite-image"),
+    #         ("Resize Image", "resize-image"),
+    #         ("Wavelet Transform", "wavelet"),
+    #         ("Show Info Video", "video_info"),
+    #         ("Motion Visualization", "visualize-motion"),
+    #         ("YUV Histogram", "yuv-histogram"),
+    #     ]
+    #     row_counter = 1
+    #     for text, value in endpoints:
+    #         button = ctk.CTkRadioButton(
+    #             self.options_frame,
+    #             text=text,
+    #             variable=self.endpoint_var,
+    #             value=value,
+    #             font=("Roboto", 14),  
+    #             command=self.toggle_parameter_inputs,  # Bind the endpoint selection change
+    #         )
+    #         button.grid(row=row_counter, column=0, padx=10, pady=5, sticky="w")
+    #         row_counter += 1
+
+    #     # File Upload Section
+    #     self.upload_button = ctk.CTkButton(
+    #         self.options_frame,
+    #         text="Upload File",
+    #         font=("Roboto", 14, "bold"),
+    #         fg_color="#1E90FF",  # Electric blue color
+    #         hover_color="#4682B4",
+    #         command=self.upload_file,
+    #     )
+    #     self.upload_button.grid(row=0, column=1, padx=10, pady=5)
+        
+    #     # Parameter Input Section
+    #     self.param_entry_label = ctk.CTkLabel(
+    #         self.options_frame,
+    #         text="Additional Parameters (e.g., 400,400):",
+    #         font=("Roboto", 12),
+    #     )
+    #     self.param_entry = ctk.CTkEntry(
+    #         self.options_frame,
+    #         placeholder_text="e.g. 400, 400",
+    #         font=("Roboto", 12),
+    #     )
+    #     # Initially hidden
+    #     self.param_entry_label.grid(row=2, column=1, padx=5, pady=5)
+    #     self.param_entry.grid(row=3, column=1, padx=5, pady=5)
+
+    #     self.param_entry_label.grid_remove()
+    #     self.param_entry.grid_remove()
+
+    #     # Run Button
+    #     self.run_button = ctk.CTkButton(
+    #         self.controls_tab,
+    #         text="Execute Endpoint",
+    #         font=("Roboto", 14, "bold"),
+    #         fg_color="#32CD32",  # Green for action
+    #         hover_color="#228B22",
+    #         command=self.execute_endpoint,
+    #     )
+    #     self.run_button.pack(pady=10)
+
+    #     # Stop Playback Button
+    #     self.stop_button = ctk.CTkButton(
+    #         self.controls_tab,
+    #         text="Stop Playback",
+    #         font=("Roboto", 14, "bold"),
+    #         fg_color="#FF6347",  # Red for stop
+    #         hover_color="#CD5C5C",
+    #         command=self.stop_video,
+    #     )
+    #     self.stop_button.pack(pady=5)
+        
+
+
+
+
+
+    
     def create_controls_tab(self):
         """Set up the controls tab for endpoint selection and file upload."""
         self.controls_tab = self.tab_view.add("Controls")
